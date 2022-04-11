@@ -1,13 +1,13 @@
-#[derive(Default)]
-pub struct StorageServer {
-    pub mem_storage: MemStorage,
-}
+use tonic::{Code, Request, Response, Status};
 
-use tonic::{Request, Response, Status};
 use tribbler::rpc;
 use tribbler::rpc::trib_storage_server::TribStorage;
 use tribbler::rpc::{Bool, Clock, Key, KeyValue, ListRemoveResponse, Pattern, StringList, Value};
-use tribbler::storage::{KeyList, KeyString, MemStorage, Storage};
+use tribbler::storage::Storage;
+
+pub struct StorageServer {
+    pub mem_storage: Box<dyn Storage>,
+}
 
 #[async_trait::async_trait]
 impl TribStorage for StorageServer {
@@ -16,7 +16,7 @@ impl TribStorage for StorageServer {
         let get_result = match get_result_match {
             Ok(inner) => match inner {
                 Some(value) => value,
-                None => panic!("None received"),
+                None => return Err(Status::new(Code::NotFound, "Key not found")),
             },
             Err(error) => panic!("Error {}", error),
         };

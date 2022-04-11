@@ -1,13 +1,14 @@
-pub struct StorageClient {
-    pub addr: String,
-}
-
 use async_trait::async_trait;
+
 use tribbler::err::TribResult;
 use tribbler::rpc;
 use tribbler::rpc::trib_storage_client::TribStorageClient;
 use tribbler::rpc::{Clock, Key};
 use tribbler::storage::{KeyList, KeyString, KeyValue, List, Pattern, Storage};
+
+pub struct StorageClient {
+    pub addr: String,
+}
 
 #[async_trait] // VERY IMPORTANT !!
 impl KeyString for StorageClient {
@@ -17,9 +18,10 @@ impl KeyString for StorageClient {
             .get(Key {
                 key: key.to_string(),
             })
-            .await?;
-        match r.into_inner().value {
-            value => Ok(Some(value)),
+            .await;
+        match r {
+            Ok(inner) => Ok(Some(inner.into_inner().value)),
+            Err(_) => Ok(None),
         }
     }
 
