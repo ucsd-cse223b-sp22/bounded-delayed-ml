@@ -1,4 +1,8 @@
+use std::borrow::Borrow;
+use std::future::Future;
+use tokio::sync::mpsc::Receiver;
 use tonic::transport::Server;
+use tribbler::rpc::trib_storage_server;
 use tribbler::{config::BackConfig, err::TribResult, storage::Storage};
 
 /// an async function which blocks indefinitely until interrupted serving on
@@ -6,12 +10,17 @@ use tribbler::{config::BackConfig, err::TribResult, storage::Storage};
 use crate::lab1::server::StorageServer;
 
 pub async fn serve_back(config: BackConfig) -> TribResult<()> {
-    // let addr = config.addr.parse().unwrap();
-    // let greeter = StorageServer::default();
-    // Server::builder().add_service(greeter).serve(addr).await?;
-    //
-    // Ok(())
-    todo!()
+    println!("I AM HERE 1");
+    let addr = config.addr.parse().unwrap();
+    let server = StorageServer {
+        mem_storage: Default::default(),
+    };
+    println!("I AM HERE 2");
+    Server::builder()
+        .add_service(trib_storage_server::TribStorageServer::new(server))
+        .serve(addr)
+        .await;
+    Ok(())
 }
 
 /// This function should create a new client which implements the [Storage]
