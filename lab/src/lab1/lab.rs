@@ -1,7 +1,6 @@
 use std::net::ToSocketAddrs;
 use tonic::transport::Server;
 use tribbler::rpc::trib_storage_server;
-use std::sync::mpsc::Receiver;
 use tribbler::{config::BackConfig, err::TribResult, storage::Storage};
 
 /// This function should create a new client which implements the [Storage]
@@ -27,33 +26,23 @@ pub async fn serve_back(config: BackConfig) -> TribResult<()> {
         None => {}
     }
 
-    Server::builder()
-        .add_service(trib_storage_server::TribStorageServer::new(server))
-        .serve(addr)
-        .await?;
-
-    // let signal = match config.shutdown {
-    //     None => None,
-    //     Some(mut sd) => match sd.recv().await {
-    //         None => None,
-    //         Some(inner) => Some(inner),
-    //     },
-    // };
-    //
-    // match signal {
-    //     None => {
-    //         Server::builder()
-    //             .add_service(trib_storage_server::TribStorageServer::new(server))
-    //             .serve(addr)
-    //             .await?;
-    //     }
-    //     Some(inner) => {
-    //         Server::builder()
-    //             .add_service(trib_storage_server::TribStorageServer::new(server))
-    //             .serve_with_shutdown(addr, async { inner })
-    //             .await?;
-    //     }
-    // }
+    match config.shutdown {
+        None => {
+            Server::builder()
+                .add_service(trib_storage_server::TribStorageServer::new(server))
+                .serve(addr)
+                .await?;
+        }
+        Some(mut sd) => {
+            Server::builder()
+                .add_service(trib_storage_server::TribStorageServer::new(server))
+                .serve_with_shutdown(addr, async {
+                    sd.recv().await;
+                    ()
+                })
+                .await?
+        }
+    };
 
     Ok(())
 }
