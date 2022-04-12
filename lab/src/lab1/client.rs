@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use tonic::Code;
 
 use tribbler::err::TribResult;
 use tribbler::rpc;
@@ -18,10 +19,13 @@ impl KeyString for StorageClient {
             .get(Key {
                 key: key.to_string(),
             })
-            .await;
-        match r {
-            Ok(inner) => Ok(Some(inner.into_inner().value)),
-            Err(_) => Ok(None),
+            .await?;
+        let value = r.into_inner().value;
+        let default_string = "".to_string();
+        if value == default_string {
+            Ok(None)
+        } else {
+            Ok(Some(value))
         }
     }
 
@@ -33,7 +37,7 @@ impl KeyString for StorageClient {
                 value: kv.value.clone(),
             })
             .await?;
-        Ok(true)
+        Ok(r.into_inner().value)
     }
 
     async fn keys(&self, p: &Pattern) -> TribResult<List> {
