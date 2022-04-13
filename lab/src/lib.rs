@@ -270,6 +270,8 @@
 //!
 //! If you feel comfortable with the lab setup, continue on to [Lab 1](lab1).
 //!
+extern crate core;
+
 mod keeper;
 pub mod lab1;
 pub mod lab2;
