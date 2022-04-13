@@ -19,7 +19,7 @@ impl TribStorage for StorageServer {
                 Some(value) => value,
                 None => "".to_string(),
             },
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(Value { value: get_result }))
     }
@@ -38,7 +38,7 @@ impl TribStorage for StorageServer {
             .await;
         let set_result = match set_result_match {
             Ok(inner) => inner,
-            Err(error) => false,
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(Bool { value: set_result }))
     }
@@ -54,7 +54,7 @@ impl TribStorage for StorageServer {
             .await;
         let keys_result = match keys_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(StringList {
             list: keys_result.0,
@@ -65,7 +65,7 @@ impl TribStorage for StorageServer {
         let list_get_result_match = self.mem_storage.list_get(&*request.into_inner().key).await;
         let list_get_result = match list_get_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(StringList {
             list: list_get_result.0,
@@ -83,7 +83,7 @@ impl TribStorage for StorageServer {
             .await;
         let list_append_result = match list_append_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(Bool {
             value: list_append_result,
@@ -104,7 +104,7 @@ impl TribStorage for StorageServer {
             .await;
         let list_remove_result = match list_remove_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(ListRemoveResponse {
             removed: list_remove_result,
@@ -122,7 +122,7 @@ impl TribStorage for StorageServer {
             .await;
         let list_keys_result = match list_keys_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(StringList {
             list: list_keys_result.0,
@@ -133,7 +133,7 @@ impl TribStorage for StorageServer {
         let clock_result_match = self.mem_storage.clock(request.into_inner().timestamp).await;
         let clock_result = match clock_result_match {
             Ok(inner) => inner,
-            Err(error) => panic!("Error {}", error),
+            Err(error) => return Err(Status::new(Code::Internal, "Error occurred")),
         };
         Ok(Response::new(Clock {
             timestamp: clock_result,
