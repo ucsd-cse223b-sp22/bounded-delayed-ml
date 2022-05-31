@@ -21,6 +21,15 @@ pub struct MLServer {
     pub clock: RwLock<u64>,
 }
 
+impl MLServer {
+    pub fn pt(self: &Self, x: usize, y: usize, z: usize) -> usize {
+        match x {
+            0 if z == 0 && y < 20 => y,
+            1 if y == 0 && z < 20 => 20 + z,
+            _ => panic!("Invalid location: {}, {}, {}", x, y, z),
+        }
+    }
+}
 #[async_trait]
 impl ParameterServer for MLServer {
     async fn pull(&self, request: Request<ModelPull>) -> Result<Response<DoubleList>, Status> {
@@ -50,28 +59,34 @@ impl ParameterServer for MLServer {
         let request = request.into_inner();
         let mut updater_queue = self
             .updater_queue
-            .read()
+            .write()
             .map_err(|e| e.to_string())
             .unwrap();
         let pos = updater_queue.iter().position(|x| x.clock == request.clock);
         return match pos {
             None => Err(Status::new(Code::Internal, "Not found in queue")),
             Some(pos) => {
-                while updater_queue.index(min(pos - 4, 0)).done == false {}
+                if updater_queue.len() > 4 {
+                    while updater_queue.index(pos - 4).done == false {}
+                }
                 let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
                 let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
-                let mut ws1 = ws_map.get(&*request.model_name).unwrap();
-                let bs1 = bs_map.get(&*request.model_name).unwrap();
+                let mut ws1 = ws_map.get(&*request.model_name).unwrap().clone();
+                let mut bs1 = bs_map.get(&*request.model_name).unwrap().clone();
 
                 //Updating Weights - Backward Propagation
-                let ws1_updated: Vec<f64> = (0..ws1.len())
-                    .map(|i| ws1[i] - self.lr * request.ws1[i])
-                    .collect();
-                let bs1_updated: Vec<f64> = (0..bs1.len())
-                    .map(|i| bs1[i] - self.lr * request.bs1[i])
-                    .collect();
-                ws_map.insert(request.model_name.clone(), ws1_updated);
-                bs_map.insert(request.model_name.clone(), bs1_updated);
+                // println!("UPDATING WEIGHTS");
+                for i in 0..20 {
+                    for pt in &[self.pt(1, 0, i), self.pt(0, i, 0)] {
+                        ws1[*pt] -= request.ws1[*pt] * self.lr;
+                        bs1[*pt] -= request.bs1[*pt] * self.lr;
+                    }
+                }
+
+                ws_map.insert(request.model_name.clone(), ws1.to_vec());
+                bs_map.insert(request.model_name.clone(), bs1.to_vec());
+                let mut value = &mut updater_queue[pos];
+                value.done = true;
                 Ok(Response::new(EmptyRequest { empty: true }))
             }
         };

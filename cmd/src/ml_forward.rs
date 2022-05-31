@@ -2,11 +2,12 @@ use rand::thread_rng;
 use rand::{distributions::Standard, Rng};
 use std::cmp::min;
 use tonic::transport::Channel;
-use mlserver::rpc::{Clock, ModelPull};
+use mlserver::rpc::{Clock, DoubleList, ModelPull};
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
 
 /// Data structure to hold the net
 
+#[derive(Debug, Clone)]
 pub struct MLWorker {
     pub client: ParameterServerClient<Channel>,
 }
@@ -15,6 +16,7 @@ pub struct Net {
     ws: Vec<f64>,
     bs: Vec<f64>,
     ns: usize,
+    clock_id: u64,
 }
 
 impl Net {
@@ -30,7 +32,7 @@ impl Net {
         }).await.unwrap().into_inner();
         let ws: Vec<f64> = response.ws1;
         let bs: Vec<f64> = response.bs1;
-        Net { ws, bs, ns }
+        Net { ws, bs, ns, clock_id: clock_response.clock }
     }
 
     /// Calculates an index into the weights/biases vector
@@ -43,29 +45,6 @@ impl Net {
         }
     }
 
-    pub fn train(
-        self: &mut Self,
-        training_data: &[(f64, f64)],
-        epochs: usize,
-        batch_size: usize,
-        learning_rate: f64,
-    ) {
-        let log_interval = epochs / 10;
-
-        for epoch in 0..epochs {
-            let mut point = 0;
-            while point <= training_data.len() {
-                let limit = min(point + batch_size, training_data.len());
-                self.backprop(&training_data[point..limit], learning_rate);
-                point += batch_size;
-            }
-
-            if log_interval > 0 && epoch % log_interval == 0 {
-                eprintln!("Epoch {}: {}", epoch, self.cost(training_data));
-            }
-        }
-    }
-
     pub fn cost(self: &Self, data: &[(f64, f64)]) -> f64 {
         let mut loss = 0.0;
         for (x, y) in data {
@@ -75,7 +54,7 @@ impl Net {
         loss / self.ns as f64
     }
 
-    pub fn backprop(self: &mut Self, data: &[(f64, f64)], learning_rate: f64) {
+    pub async fn backprop(self: &mut Self, data: &[(f64, f64)], mut worker: MLWorker) {
         let mut dws: Vec<f64> = vec![0.0; self.ns * 2];
         let mut dbs: Vec<f64> = vec![0.0; self.ns * 2];
 
@@ -100,12 +79,13 @@ impl Net {
 
         // println!("DWS {:?}", dws);
         // println!("DBS {:?}", dbs);
-        for i in 0..self.ns {
-            for pt in &[self.pt(1, 0, i), self.pt(0, i, 0)] {
-                self.ws[*pt] -= dws[*pt] * learning_rate;
-                self.bs[*pt] -= dbs[*pt] * learning_rate;
-            }
-        }
+        let push_result = worker.client.push(DoubleList{
+            clock: self.clock_id,
+            model_name: "model1".to_string(),
+            ws1: dws,
+            bs1: dbs
+        }).await;
+        let x = 5;
     }
 
     pub fn eval(self: &Self, val: f64) -> f64 {
