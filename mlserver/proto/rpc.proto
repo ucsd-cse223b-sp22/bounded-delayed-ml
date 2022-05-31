@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package rpc;
+
+message Clock {
+  uint64 clock = 1;
+}
+
+message EmptyRequest{
+  bool empty = 1;
+};
+
+message ModelPull{
+  string name = 1;
+  uint64 clock = 2;
+};
+
+message DoubleList {
+  uint64 clock = 1;
+  string model_name = 2;
+  repeated double ws1 = 3;
+  repeated double bs1 = 4;
+}
+
+service ParameterServer {
+  rpc pull(ModelPull) returns (DoubleList);
+  rpc push(DoubleList) returns (EmptyRequest);
+  rpc clock(Clock) returns (Clock);
+}

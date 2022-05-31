@@ -1,8 +1,8 @@
 **/target/**
 Cargo.lock
 .vscode/
-tribbler/bin
-tribbler/pkg
+mlserver/bin
+mlserver/pkg
 www/node_modules
 www/package-lock.json
 # generated files

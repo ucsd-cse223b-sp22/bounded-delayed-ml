@@ -6,9 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lab = { path = "../lab" }
-tribbler = { path = "../tribbler" }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+mlserver = { path = "../mlserver" }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time", "net"] }
 clap = { version = "3.1", features = ["derive"] }
 actix-web = "4.0"
 actix-files = "0.6"
@@ -17,33 +16,13 @@ serde = { version = "1.0", features = ["derive", "rc"] }
 log = "0.4"
 env_logger = "0.9"
 shlex = "1.1"
+tonic = "0.6"
 rand = "0.8"
 
+[[bin]]
+name = "launch-server"
+path = "src/launch_servers.rs"
 
 [[bin]]
-name = "kv-server"
-path = "src/kv_server.rs"
-
-[[bin]]
-name = "kv-client"
-path = "src/kv_client.rs"
-
-[[bin]]
-name = "trib-front"
-path = "src/trib_front.rs"
-
-[[bin]]
-name = "bins-mkcfg"
-path = "src/bins_mkcfg.rs"
-
-[[bin]]
-name = "bins-back"
-path = "src/bins_back.rs"
-
-[[bin]]
-name = "bins-keep"
-path = "src/bins_keep.rs"
-
-[[bin]]
-name = "bins-client"
-path = "src/bins_client.rs"
+name = "launch-worker"
+path = "src/launch_worker.rs"

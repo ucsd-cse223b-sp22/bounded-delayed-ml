@@ -1,5 +1,5 @@
 [package]
-name = "tribbler"
+name = "mlserver"
 version = "0.1.0"
 edition = "2021"
 
@@ -18,5 +18,4 @@ async-trait = "0.1.53"
 
 [build-dependencies]
 tonic-build = { version = "0.6", features = ["rustfmt"] }
-
 
