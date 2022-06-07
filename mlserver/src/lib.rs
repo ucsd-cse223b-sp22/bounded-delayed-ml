@@ -17,11 +17,15 @@
 //!
 //! ```
 
+pub mod bin_client;
 pub mod client;
 pub mod err;
+pub mod ml;
+pub mod ps_bin;
 pub mod rpc;
 pub mod serve;
 pub mod server;
+pub mod storage;
 
 // use rand::thread_rng;
 // use rand::{distributions::Standard, Rng};

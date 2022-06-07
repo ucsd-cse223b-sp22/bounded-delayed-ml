@@ -2,13 +2,10 @@ use std::cmp::min;
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
 use std::time::Instant;
 use cmd::ml_forward::{MLWorker, Net};
+use mlserver::serve::new_bin_client;
 
 #[tokio::main]
 async fn main() {
-    let mut worker_client = ParameterServerClient::connect("http://127.0.0.1:34151").await;
-    let ml_worker = MLWorker {
-        client: worker_client.unwrap()
-    };
 
     fn original_fn(x: f64) -> f64 {
         x * x * x + x * x + x
@@ -35,15 +32,15 @@ async fn main() {
 
     let log_interval = epochs / 10;
     //TODO:: Take this from queue and execute backprop for each model individually
-    let mut net = Net::new(20, ml_worker.clone()).await;
+    let mut net = Net::new(20, "http://127.0.0.1:34151".to_string()).await;
 
     for epoch in 0..1 {
         let limit = min(point + batch_size, training_data.len());
-        net.backprop(&training_data[point..limit], ml_worker.clone()).await;
+        net.backprop(&training_data[point..limit], "http://127.0.0.1:34151".to_string()).await;
         if log_interval > 0 && epoch % log_interval == 0 {
             eprintln!("Epoch {}: {}", epoch, net.cost(&training_data.clone()));
         }
-        net = Net::new(20, ml_worker.clone()).await;
+        net = Net::new(20, "http://127.0.0.1:34151".to_string()).await;
     }
 
 
