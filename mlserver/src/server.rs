@@ -17,6 +17,40 @@ pub struct MLServer {
 
 #[async_trait]
 impl ParameterServer for MLServer {
+    async fn set_ready(
+        &self,
+        request: Request<EmptyRequest>,
+    ) -> Result<Response<EmptyRequest>, Status> {
+        let request = request.into_inner();
+        let ready_val = self
+            .ml_model
+            .set_ready(ml::EmptyRequest {
+                empty: request.empty,
+            })
+            .await;
+        match ready_val {
+            Ok(_) => Ok(Response::new(EmptyRequest { empty: true })),
+            Err(_) => return Err(Status::new(Code::Internal, "Error occurred")),
+        }
+    }
+
+    async fn get_ready(
+        &self,
+        request: Request<EmptyRequest>,
+    ) -> Result<Response<EmptyRequest>, Status> {
+        let request = request.into_inner();
+        let ready_val = self
+            .ml_model
+            .get_ready(ml::EmptyRequest { empty: true })
+            .await;
+        match ready_val {
+            Ok(result) => Ok(Response::new(EmptyRequest {
+                empty: result.empty,
+            })),
+            Err(_) => return Err(Status::new(Code::Internal, "Error occurred")),
+        }
+    }
+
     async fn pull(&self, request: Request<ModelPull>) -> Result<Response<DoubleList>, Status> {
         let request = request.into_inner();
         let model_name = request.name;

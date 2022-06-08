@@ -10,6 +10,10 @@ pub struct WorkerStatus {
     pub done: bool,
 }
 
+pub struct EmptyRequest {
+    pub empty: bool,
+}
+
 pub struct ModelPull {
     pub name: String,
     pub clock: u64,
@@ -28,6 +32,8 @@ pub trait MLModel: Send + Sync {
     /// be unique, no smaller than `at_least`, and strictly larger than the
     /// value returned last time, unless it was [u64::MAX]
 
+    async fn get_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest>;
+    async fn set_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest>;
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList>;
     async fn push(&self, double_list: DoubleList) -> TribResult<bool>;
     async fn clock(&self, at_least: u64) -> TribResult<u64>;
@@ -37,6 +43,7 @@ pub struct MLStorage {
     pub updater_queue: RwLock<Vec<WorkerStatus>>,
     pub ws1: RwLock<HashMap<String, Vec<f64>>>,
     pub bs1: RwLock<HashMap<String, Vec<f64>>>,
+    pub ready: RwLock<bool>,
     pub lr: f64,
     pub clock: RwLock<u64>,
 }
@@ -53,6 +60,17 @@ impl MLStorage {
 
 #[async_trait]
 impl MLModel for MLStorage {
+    async fn get_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest> {
+        let mut ready_val = self.ready.read().map_err(|e| e.to_string())?;
+        Ok(EmptyRequest { empty: *ready_val })
+    }
+
+    async fn set_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest> {
+        let mut ready_val = self.ready.write().map_err(|e| e.to_string())?;
+        *ready_val = ready_value.empty;
+        Ok(EmptyRequest { empty: true })
+    }
+
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList> {
         let ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
         let ws1 = ws_map.get(&*model_pull.name).unwrap();

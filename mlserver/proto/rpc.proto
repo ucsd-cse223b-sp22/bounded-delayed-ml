@@ -23,6 +23,8 @@ message DoubleList {
 }
 
 service ParameterServer {
+  rpc set_ready(EmptyRequest) returns (EmptyRequest);
+  rpc get_ready(EmptyRequest) returns (EmptyRequest);
   rpc pull(ModelPull) returns (DoubleList);
   rpc push(DoubleList) returns (EmptyRequest);
   rpc clock(Clock) returns (Clock);

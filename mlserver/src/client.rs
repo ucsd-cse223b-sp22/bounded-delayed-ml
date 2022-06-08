@@ -14,6 +14,28 @@ pub struct ParameterClient {
 
 #[async_trait] // VERY IMPORTANT !!
 impl MLModel for ParameterClient {
+    async fn get_ready(&self, ready_value: ml::EmptyRequest) -> TribResult<ml::EmptyRequest> {
+        let mut client = self.client.clone();
+        let r = client
+            .get_ready(EmptyRequest {
+                empty: ready_value.empty,
+            })
+            .await?
+            .into_inner();
+        Ok(ml::EmptyRequest { empty: r.empty })
+    }
+
+    async fn set_ready(&self, ready_value: ml::EmptyRequest) -> TribResult<ml::EmptyRequest> {
+        let mut client = self.client.clone();
+        let r = client
+            .set_ready(EmptyRequest {
+                empty: ready_value.empty,
+            })
+            .await?
+            .into_inner();
+        Ok(ml::EmptyRequest { empty: true })
+    }
+
     async fn pull(&self, model: ml::ModelPull) -> TribResult<ml::DoubleList> {
         let mut client = self.client.clone();
         let r = client

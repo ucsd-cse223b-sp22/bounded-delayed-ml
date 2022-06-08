@@ -42,6 +42,7 @@ pub async fn new_ml_model() -> TribResult<Box<dyn MLModel>> {
             "model1".to_string(),
             thread_rng().sample_iter(Standard).take(40).collect(),
         )])),
+        ready: RwLock::new(true),
         lr: 0.000001,
         clock: Default::default(),
     };
