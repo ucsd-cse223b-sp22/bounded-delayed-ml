@@ -5,7 +5,8 @@ use tokio::join;
 #[tokio::main]
 pub async fn main() {
     let backs = [
-        "127.0.0.1:34151".to_string()
+        "127.0.0.1:34151".to_string(),
+        "127.0.0.1:34152".to_string()
     ];
     let mut handles = vec![];
     println!("STARTING BACKENDS");

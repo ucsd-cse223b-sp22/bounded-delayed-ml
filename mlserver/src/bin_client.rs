@@ -8,6 +8,7 @@ use crate::storage::BinStorage;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+#[derive(Clone)]
 pub struct BinStorageClient {
     pub addresses: Vec<String>,
     // pub bin_map: Arc<RwLock<HashMap<String, Bin>>>,
@@ -15,35 +16,38 @@ pub struct BinStorageClient {
 
 async fn get_successor(start_index: i32, addresses: Vec<String>) -> TribResult<i32> {
     let count = addresses.len() as i32;
-    println!("count: {}", count);
-    println!("start index: {}", start_index);
+    // println!("count: {}", count);
+    // println!("start index: {}", start_index);
+    if count == 1 {
+        return Ok(0);
+    }
     for i in 0..count {
         let index = (start_index + i) % count;
         let addr = addresses[index as usize].clone();
         let address = format!("http://{}", addr.clone());
-        let mut client_conn = ParameterServerClient::connect(address.clone()).await;
-        match client_conn {
-            Ok(conn) => {
-                let backend_client = ParameterClient { client: conn };
-                return Ok(index as i32);
-                // let mut ready = backend_client.get(key_constant::READY).await;
-                // match ready {
-                //     Ok(val) => {
-                //         if val == None {
-                //             continue;
-                //         } else {
-                //             if val.unwrap() == key_constant::FALSE {
-                //                 ready = backend_client.get(key_constant::READY).await;
-                //             }
-                //             println!("Found Index {}", index);
-                //             return Ok(index as i32);
-                //         }
-                //     }
-                //     Err(_) => continue,
-                // }
-            }
-            Err(_) => continue,
-        }
+        // let mut client_conn = ParameterServerClient::connect(address.clone()).await;
+        // match client_conn {
+        //     Ok(conn) => {
+        //         let backend_client = ParameterClient { client: conn };
+        return Ok(index as i32);
+        // let mut ready = backend_client.get(key_constant::READY).await;
+        // match ready {
+        //     Ok(val) => {
+        //         if val == None {
+        //             continue;
+        //         } else {
+        //             if val.unwrap() == key_constant::FALSE {
+        //                 ready = backend_client.get(key_constant::READY).await;
+        //             }
+        //             println!("Found Index {}", index);
+        //             return Ok(index as i32);
+        //         }
+        //     }
+        //     Err(_) => continue,
+        // }
+        // }
+        // Err(_) => continue,
+        // }
     }
     return Err(Box::new(TribblerError::RpcError(
         "Could not find successor".to_string(),

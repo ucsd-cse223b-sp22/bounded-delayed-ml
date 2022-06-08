@@ -1,11 +1,16 @@
 use std::cmp::min;
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
 use std::time::Instant;
-use cmd::ml_forward::{MLWorker, Net};
+use cmd::ml_forward::Net;
+use mlserver::err::TribResult;
 use mlserver::serve::new_bin_client;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> TribResult<()> {
+    let backs = [
+        "127.0.0.1:34151".to_string(),
+        "127.0.0.1:34152".to_string()
+    ];
 
     fn original_fn(x: f64) -> f64 {
         x * x * x + x * x + x
@@ -23,30 +28,31 @@ async fn main() {
         .map(|x| (x, original_fn(x)))
         .collect();
 
-    let epochs = 100000;
+    let epochs = 1000;
     let batch_size = 5;
     let start = Instant::now();
 
     //TODO:: Set point for each worker differently
     let mut point = 0;
 
-    let log_interval = epochs / 10;
+    let log_interval = epochs / 100;
     //TODO:: Take this from queue and execute backprop for each model individually
-    let mut net = Net::new(20, "http://127.0.0.1:34151".to_string()).await;
+    let mut net = Net::new(20, backs.to_vec()).await?;
 
-    for epoch in 0..1 {
+    for epoch in 0..epochs {
         let limit = min(point + batch_size, training_data.len());
-        net.backprop(&training_data[point..limit], "http://127.0.0.1:34151".to_string()).await;
+        net.backprop(&training_data[point..limit]).await?;
         if log_interval > 0 && epoch % log_interval == 0 {
             eprintln!("Epoch {}: {}", epoch, net.cost(&training_data.clone()));
         }
-        net = Net::new(20, "http://127.0.0.1:34151".to_string()).await;
+        net = Net::new(20, backs.to_vec()).await?;
     }
 
 
     eprintln!("Training duration: {}s", start.elapsed().as_secs());
     eprintln!("Validation error: {}", net.cost(&validation_data));
-    for (x,y) in &training_data[point..batch_size] {
+    for (x, y) in &training_data[point..batch_size] {
         println!("{}\t{}\t{}", x, original_fn(*x), net.eval(*x));
     }
+    Ok(())
 }

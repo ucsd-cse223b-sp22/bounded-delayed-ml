@@ -3,40 +3,39 @@ use rand::{distributions::Standard, Rng};
 use std::cmp::min;
 use tonic::transport::Channel;
 use mlserver::client::ParameterClient;
+use mlserver::err::TribResult;
 use mlserver::ml::MLModel;
 use mlserver::rpc::{Clock, DoubleList, ModelPull};
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
+use mlserver::serve::new_bin_client;
 use mlserver::storage::BinStorage;
 
 /// Data structure to hold the net
 
-pub struct MLWorker {
-    pub client: Box<dyn MLModel>,
-}
 
 pub struct Net {
     ws: Vec<f64>,
     bs: Vec<f64>,
     ns: usize,
     clock_id: u64,
+    bin_client: Box<dyn BinStorage>,
 }
 
 impl Net {
     /// Create a fully-connected net with hidden layer size
-    pub async fn new(ns: usize, addr: String) -> Net {
-        let mut worker_conn = ParameterServerClient::connect(addr).await.unwrap();
-        let worker_client = ParameterClient {
-            client: worker_conn
-        };
+    pub async fn new(ns: usize, backs: Vec<String>) -> TribResult<Net> {
+
         //TODO:: Get model name from queue recursively for # of epochs
-        let clock_response = worker_client.clock(0).await.unwrap();
-        let response = worker_client.pull(mlserver::ml::ModelPull {
+        let bin_client = new_bin_client(backs).await?;
+        let bin = bin_client.bin("model1").await?;
+        let clock_response = bin.clock(0).await.unwrap();
+        let response = bin.pull(mlserver::ml::ModelPull {
             name: "model1".to_string(),
             clock: clock_response,
         }).await.unwrap();
         let ws: Vec<f64> = response.ws1;
         let bs: Vec<f64> = response.bs1;
-        Net { ws, bs, ns, clock_id: clock_response }
+        Ok(Net { ws, bs, ns, clock_id: clock_response, bin_client })
     }
 
     /// Calculates an index into the weights/biases vector
@@ -58,11 +57,7 @@ impl Net {
         loss / self.ns as f64
     }
 
-    pub async fn backprop(self: &mut Self, data: &[(f64, f64)], addr: String) {
-        let mut worker_conn = ParameterServerClient::connect(addr).await.unwrap();
-        let worker_client = ParameterClient {
-            client: worker_conn
-        };
+    pub async fn backprop(self: &mut Self, data: &[(f64, f64)]) -> TribResult<()>{
         let mut dws: Vec<f64> = vec![0.0; self.ns * 2];
         let mut dbs: Vec<f64> = vec![0.0; self.ns * 2];
 
@@ -87,13 +82,15 @@ impl Net {
 
         // println!("DWS {:?}", dws);
         // println!("DBS {:?}", dbs);
-        let push_result = worker_client.push(mlserver::ml::DoubleList {
+        let bin = self.bin_client.bin("model1").await?;
+        let push_result = bin.push(mlserver::ml::DoubleList {
             clock: self.clock_id,
             model_name: "model1".to_string(),
             ws1: dws,
             bs1: dbs,
         }).await;
         let x = 5;
+        Ok(())
     }
 
     pub fn eval(self: &Self, val: f64) -> f64 {
