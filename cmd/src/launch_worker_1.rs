@@ -1,17 +1,15 @@
 use std::cmp::min;
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
 use std::time::Instant;
+use cmd::backs::BACKS;
 use cmd::ml_forward::Net;
 use mlserver::err::TribResult;
 use mlserver::serve::new_bin_client;
 
 #[tokio::main]
 async fn main() -> TribResult<()> {
-    let backs = [
-        "127.0.0.1:34151".to_string(),
-        "127.0.0.1:34152".to_string()
-    ];
 
+    let backs = BACKS.map(|x| x.to_string()).to_vec();
     fn original_fn(x: f64) -> f64 {
         x * x * x + x * x + x
     }
@@ -37,7 +35,7 @@ async fn main() -> TribResult<()> {
 
     let log_interval = epochs / 100;
     //TODO:: Take this from queue and execute backprop for each model individually
-    let mut net = Net::new(20, backs.to_vec()).await?;
+    let mut net = Net::new("model1", 20, backs.clone()).await?;
 
     for epoch in 0..epochs {
         let limit = min(point + batch_size, training_data.len());
@@ -45,7 +43,7 @@ async fn main() -> TribResult<()> {
         if log_interval > 0 && epoch % log_interval == 0 {
             eprintln!("Epoch {}: {}", epoch, net.cost(&training_data.clone()));
         }
-        net = Net::new(20, backs.to_vec()).await?;
+        net = Net::new("model1",20, backs.clone()).await?;
     }
 
 

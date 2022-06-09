@@ -100,6 +100,7 @@ impl MLModel for MLStorage {
                 );
             }
             Some(uq) => {
+                let updater_check = uq.to_vec();
                 uq.push(WorkerStatus {
                     clock: model_pull.clock,
                     done: false,

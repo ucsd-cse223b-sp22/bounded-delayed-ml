@@ -24,8 +24,13 @@ name = "launch-server"
 path = "src/launch_servers.rs"
 
 [[bin]]
-name = "launch-worker"
-path = "src/launch_worker.rs"
+name = "launch-worker-1"
+path = "src/launch_worker_1.rs"
+
+[[bin]]
+name = "launch-worker-2"
+path = "src/launch_worker_2.rs"
+
 
 [[bin]]
 name = "run-initializer"

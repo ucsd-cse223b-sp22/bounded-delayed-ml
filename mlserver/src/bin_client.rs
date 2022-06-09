@@ -76,6 +76,7 @@ impl BinStorage for BinStorageClient {
         if primary_address != None && secondary_address != None {
             let unwrapped_primary = format!("http://{}", primary_address.unwrap());
             let unwrapped_secondary = format!("http://{}", secondary_address.unwrap());
+            // println!("Primary is:{}", primary_address.unwrap().clone());
             let mut prim_client_conn =
                 ParameterServerClient::connect(unwrapped_primary.clone()).await?;
             let storage_client = ParameterClient {

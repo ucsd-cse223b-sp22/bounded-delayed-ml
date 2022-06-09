@@ -14,6 +14,7 @@ use mlserver::storage::BinStorage;
 
 
 pub struct Net {
+    model_name: String,
     ws: Vec<f64>,
     bs: Vec<f64>,
     ns: usize,
@@ -23,19 +24,19 @@ pub struct Net {
 
 impl Net {
     /// Create a fully-connected net with hidden layer size
-    pub async fn new(ns: usize, backs: Vec<String>) -> TribResult<Net> {
+    pub async fn new(model_name: &str, ns: usize, backs: Vec<String>) -> TribResult<Net> {
 
         //TODO:: Get model name from queue recursively for # of epochs
         let bin_client = new_bin_client(backs).await?;
-        let bin = bin_client.bin("model1").await?;
+        let bin = bin_client.bin(model_name.clone()).await?;
         let clock_response = bin.clock(0).await.unwrap();
         let response = bin.pull(mlserver::ml::ModelPull {
-            name: "model1".to_string(),
+            name: model_name.clone().to_string(),
             clock: clock_response,
         }).await.unwrap();
         let ws: Vec<f64> = response.ws1;
         let bs: Vec<f64> = response.bs1;
-        Ok(Net { ws, bs, ns, clock_id: clock_response, bin_client })
+        Ok(Net { model_name: model_name.to_string(), ws, bs, ns, clock_id: clock_response, bin_client })
     }
 
     /// Calculates an index into the weights/biases vector
@@ -57,7 +58,7 @@ impl Net {
         loss / self.ns as f64
     }
 
-    pub async fn backprop(self: &mut Self, data: &[(f64, f64)]) -> TribResult<()>{
+    pub async fn backprop(self: &mut Self, data: &[(f64, f64)]) -> TribResult<()> {
         let mut dws: Vec<f64> = vec![0.0; self.ns * 2];
         let mut dbs: Vec<f64> = vec![0.0; self.ns * 2];
 
@@ -82,10 +83,10 @@ impl Net {
 
         // println!("DWS {:?}", dws);
         // println!("DBS {:?}", dbs);
-        let bin = self.bin_client.bin("model1").await?;
+        let bin = self.bin_client.bin(&*self.model_name.clone()).await?;
         let push_result = bin.push(mlserver::ml::DoubleList {
-            clock: self.clock_id,
-            model_name: "model1".to_string(),
+            clock: self.clock_id.clone(),
+            model_name: self.model_name.clone(),
             ws1: dws,
             bs1: dbs,
         }).await;

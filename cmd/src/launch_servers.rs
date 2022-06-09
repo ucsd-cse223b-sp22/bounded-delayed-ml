@@ -1,13 +1,12 @@
 use log::{info, warn};
 use std::net::ToSocketAddrs;
 use tokio::join;
+use cmd::backs::BACKS;
 
 #[tokio::main]
 pub async fn main() {
-    let backs = [
-        "127.0.0.1:34151".to_string(),
-        "127.0.0.1:34152".to_string()
-    ];
+
+    let backs = BACKS.map(|x| x.to_string()).to_vec();
     let mut handles = vec![];
     println!("STARTING BACKENDS");
     for (i, srv) in backs.iter().enumerate() {
