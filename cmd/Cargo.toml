@@ -26,3 +26,7 @@ path = "src/launch_servers.rs"
 [[bin]]
 name = "launch-worker"
 path = "src/launch_worker.rs"
+
+[[bin]]
+name = "run-initializer"
+path = "src/run_initializer.rs"

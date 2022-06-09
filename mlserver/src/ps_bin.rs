@@ -13,6 +13,13 @@ pub struct MyParameterServerBin {
 
 #[async_trait::async_trait]
 impl MLModel for MyParameterServerBin {
+    async fn initialize(
+        &self,
+        double_list: crate::ml::DoubleList,
+    ) -> TribResult<crate::ml::EmptyRequest> {
+        Ok(self.client.initialize(double_list).await?)
+    }
+
     async fn get_ready(
         &self,
         ready_value: crate::ml::EmptyRequest,

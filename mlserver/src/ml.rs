@@ -1,5 +1,7 @@
 use crate::err::{TribResult, TribblerError};
 use async_trait::async_trait;
+use rand::distributions::Standard;
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::ops::Index;
 use std::sync::RwLock;
@@ -33,6 +35,7 @@ pub trait MLModel: Send + Sync {
     /// be unique, no smaller than `at_least`, and strictly larger than the
     /// value returned last time, unless it was [u64::MAX]
 
+    async fn initialize(&self, double_list: DoubleList) -> TribResult<EmptyRequest>;
     async fn get_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest>;
     async fn set_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest>;
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList>;
@@ -61,6 +64,17 @@ impl MLStorage {
 
 #[async_trait]
 impl MLModel for MLStorage {
+    async fn initialize(&self, double_list: DoubleList) -> TribResult<EmptyRequest> {
+        let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
+        let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
+        let mut lr_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
+        let model_name = double_list.model_name;
+        ws_map.insert(model_name.clone(), double_list.ws1.to_vec());
+        bs_map.insert(model_name.clone(), double_list.bs1.to_vec());
+        lr_map.insert(model_name.clone(), 0.000001);
+        Ok(EmptyRequest { empty: true })
+    }
+
     async fn get_ready(&self, ready_value: EmptyRequest) -> TribResult<EmptyRequest> {
         let mut ready_val = self.ready.read().map_err(|e| e.to_string())?;
         Ok(EmptyRequest { empty: *ready_val })
@@ -73,16 +87,7 @@ impl MLModel for MLStorage {
     }
 
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList> {
-        let ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
-        let ws1 = ws_map.get(&*model_pull.name).unwrap();
-
-        let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
-        let bs1 = bs_map.get(&*model_pull.name).unwrap();
-        let mut updater_queue_map = self
-            .updater_queue
-            .write()
-            .map_err(|e| e.to_string())
-            .unwrap();
+        let mut updater_queue_map = self.updater_queue.write().map_err(|e| e.to_string())?;
         let mut updater_queue = updater_queue_map.get_mut(&*model_pull.name);
         match updater_queue {
             None => {
@@ -99,21 +104,31 @@ impl MLModel for MLStorage {
                     clock: model_pull.clock,
                     done: false,
                 });
-                updater_queue_map.insert(
-                    model_pull.name.clone(),
-                    vec![WorkerStatus {
-                        clock: model_pull.clock,
-                        done: false,
-                    }],
-                );
+                let pos = uq.iter().position(|x| x.clock == model_pull.clock);
+                match pos {
+                    None => {
+                        return Err(Box::new(TribblerError::RpcError("Error".to_string())));
+                    }
+                    Some(p) => {
+                        if uq.len() > 4 {
+                            while uq.index(p - 4).done == false {}
+                        }
+                    }
+                }
             }
         }
-        Ok(DoubleList {
+        let ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
+        let ws1 = ws_map.get(&*model_pull.name).unwrap();
+
+        let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
+        let bs1 = bs_map.get(&*model_pull.name).unwrap();
+
+        return Ok(DoubleList {
             clock: model_pull.clock.clone(),
             model_name: model_pull.name.clone(),
             ws1: ws1.clone(),
             bs1: bs1.clone(),
-        })
+        });
     }
 
     async fn push(&self, double_list: DoubleList) -> TribResult<bool> {
@@ -122,30 +137,21 @@ impl MLModel for MLStorage {
             .write()
             .map_err(|e| e.to_string())
             .unwrap();
-        let mut updater_queue = updater_queue_map
-            .get(&*double_list.model_name)
-            .unwrap()
-            .to_vec();
+        let updater_queue = updater_queue_map.get_mut(&*double_list.model_name).unwrap();
         let pos = updater_queue
             .iter()
             .position(|x| x.clock == double_list.clock);
-        let learning_rate_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
+        let learning_rate_map = self.lr.read().map_err(|e| e.to_string()).unwrap();
         let learning_rate = *learning_rate_map.get(&*double_list.model_name).unwrap();
         return match pos {
             None => Err(Box::new(TribblerError::RpcError("Error".to_string()))),
             Some(pos) => {
-                if updater_queue.len() > 4 {
-                    while updater_queue.index(pos - 4).done == false {}
-                }
                 let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
                 let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
                 let model_name = double_list.model_name;
                 let mut ws1 = ws_map.get(&*model_name).unwrap().clone();
                 let mut bs1 = bs_map.get(&*model_name).unwrap().clone();
-
-                //Updating Weights - Backward Propagation
-                // println!("UPDATING WEIGHTS");
-                for i in 0..20 {
+                for i in 0..(ws1.len() / 2) {
                     for pt in &[self.pt(1, 0, i), self.pt(0, i, 0)] {
                         ws1[*pt] -= double_list.ws1[*pt] * learning_rate;
                         bs1[*pt] -= double_list.bs1[*pt] * learning_rate;
@@ -154,15 +160,11 @@ impl MLModel for MLStorage {
 
                 ws_map.insert(model_name.clone(), ws1.to_vec());
                 bs_map.insert(model_name.clone(), bs1.to_vec());
-                let mut value = &mut updater_queue[pos];
-                value.done = true;
-                updater_queue.insert(
-                    pos,
-                    WorkerStatus {
-                        clock: double_list.clock,
-                        done: true,
-                    },
-                );
+
+                //Updating Weights - Backward Propagation
+                // println!("UPDATING WEIGHTS");
+
+                updater_queue[pos].done = true;
                 Ok(true)
             }
         };

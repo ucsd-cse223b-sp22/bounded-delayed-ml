@@ -86,6 +86,20 @@ pub mod parameter_server_client {
             self.inner = self.inner.accept_gzip();
             self
         }
+        pub async fn initialize(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoubleList>,
+        ) -> Result<tonic::Response<super::EmptyRequest>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/rpc.ParameterServer/initialize");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         pub async fn set_ready(
             &mut self,
             request: impl tonic::IntoRequest<super::EmptyRequest>,
@@ -165,6 +179,10 @@ pub mod parameter_server_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with ParameterServerServer."]
     #[async_trait]
     pub trait ParameterServer: Send + Sync + 'static {
+        async fn initialize(
+            &self,
+            request: tonic::Request<super::DoubleList>,
+        ) -> Result<tonic::Response<super::EmptyRequest>, tonic::Status>;
         async fn set_ready(
             &self,
             request: tonic::Request<super::EmptyRequest>,
@@ -225,6 +243,37 @@ pub mod parameter_server_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/rpc.ParameterServer/initialize" => {
+                    #[allow(non_camel_case_types)]
+                    struct initializeSvc<T: ParameterServer>(pub Arc<T>);
+                    impl<T: ParameterServer> tonic::server::UnaryService<super::DoubleList> for initializeSvc<T> {
+                        type Response = super::EmptyRequest;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoubleList>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).initialize(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = initializeSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rpc.ParameterServer/set_ready" => {
                     #[allow(non_camel_case_types)]
                     struct set_readySvc<T: ParameterServer>(pub Arc<T>);

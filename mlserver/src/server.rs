@@ -17,6 +17,23 @@ pub struct MLServer {
 
 #[async_trait]
 impl ParameterServer for MLServer {
+    async fn initialize(
+        &self,
+        request: Request<DoubleList>,
+    ) -> Result<Response<EmptyRequest>, Status> {
+        let request_val = request.into_inner();
+        let result = self
+            .ml_model
+            .initialize(ml::DoubleList {
+                clock: 0,
+                model_name: request_val.model_name.to_string(),
+                ws1: request_val.ws1.clone(),
+                bs1: request_val.bs1.clone(),
+            })
+            .await;
+        Ok(Response::new(EmptyRequest { empty: true }))
+    }
+
     async fn set_ready(
         &self,
         request: Request<EmptyRequest>,
