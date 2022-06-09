@@ -5,6 +5,7 @@ use std::ops::Index;
 use std::sync::RwLock;
 use tonic::{Code, Response, Status};
 
+#[derive(Clone)]
 pub struct WorkerStatus {
     pub clock: u64,
     pub done: bool,
@@ -40,11 +41,11 @@ pub trait MLModel: Send + Sync {
 }
 
 pub struct MLStorage {
-    pub updater_queue: RwLock<Vec<WorkerStatus>>,
+    pub updater_queue: RwLock<HashMap<String, Vec<WorkerStatus>>>,
     pub ws1: RwLock<HashMap<String, Vec<f64>>>,
     pub bs1: RwLock<HashMap<String, Vec<f64>>>,
     pub ready: RwLock<bool>,
-    pub lr: f64,
+    pub lr: RwLock<HashMap<String, f64>>,
     pub clock: RwLock<u64>,
 }
 
@@ -77,15 +78,36 @@ impl MLModel for MLStorage {
 
         let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
         let bs1 = bs_map.get(&*model_pull.name).unwrap();
-        let mut updater_queue = self
+        let mut updater_queue_map = self
             .updater_queue
             .write()
             .map_err(|e| e.to_string())
             .unwrap();
-        updater_queue.push(WorkerStatus {
-            clock: model_pull.clock,
-            done: false,
-        });
+        let mut updater_queue = updater_queue_map.get_mut(&*model_pull.name);
+        match updater_queue {
+            None => {
+                updater_queue_map.insert(
+                    model_pull.name.clone(),
+                    vec![WorkerStatus {
+                        clock: model_pull.clock,
+                        done: false,
+                    }],
+                );
+            }
+            Some(uq) => {
+                uq.push(WorkerStatus {
+                    clock: model_pull.clock,
+                    done: false,
+                });
+                updater_queue_map.insert(
+                    model_pull.name.clone(),
+                    vec![WorkerStatus {
+                        clock: model_pull.clock,
+                        done: false,
+                    }],
+                );
+            }
+        }
         Ok(DoubleList {
             clock: model_pull.clock.clone(),
             model_name: model_pull.name.clone(),
@@ -95,14 +117,20 @@ impl MLModel for MLStorage {
     }
 
     async fn push(&self, double_list: DoubleList) -> TribResult<bool> {
-        let mut updater_queue = self
+        let mut updater_queue_map = self
             .updater_queue
             .write()
             .map_err(|e| e.to_string())
             .unwrap();
+        let mut updater_queue = updater_queue_map
+            .get(&*double_list.model_name)
+            .unwrap()
+            .to_vec();
         let pos = updater_queue
             .iter()
             .position(|x| x.clock == double_list.clock);
+        let learning_rate_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
+        let learning_rate = *learning_rate_map.get(&*double_list.model_name).unwrap();
         return match pos {
             None => Err(Box::new(TribblerError::RpcError("Error".to_string()))),
             Some(pos) => {
@@ -119,8 +147,8 @@ impl MLModel for MLStorage {
                 // println!("UPDATING WEIGHTS");
                 for i in 0..20 {
                     for pt in &[self.pt(1, 0, i), self.pt(0, i, 0)] {
-                        ws1[*pt] -= double_list.ws1[*pt] * self.lr;
-                        bs1[*pt] -= double_list.bs1[*pt] * self.lr;
+                        ws1[*pt] -= double_list.ws1[*pt] * learning_rate;
+                        bs1[*pt] -= double_list.bs1[*pt] * learning_rate;
                     }
                 }
 

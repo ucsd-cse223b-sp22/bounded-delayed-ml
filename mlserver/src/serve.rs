@@ -43,7 +43,7 @@ pub async fn new_ml_model() -> TribResult<Box<dyn MLModel>> {
             thread_rng().sample_iter(Standard).take(40).collect(),
         )])),
         ready: RwLock::new(true),
-        lr: 0.000001,
+        lr: RwLock::new(HashMap::from([("model1".to_string(), 0.000001)])),
         clock: Default::default(),
     };
     Ok(Box::new(ml_model))
