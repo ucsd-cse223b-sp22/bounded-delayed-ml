@@ -36,29 +36,27 @@ async fn main() -> TribResult<()> {
     let mut point = 0;
 
     let log_interval = epochs / 100;
+    let limit = min(point + batch_size, training_data.len());
     //TODO:: Take this from queue and execute backprop for each model individually
-    let mut net2 = Net::new("model1",20, backs.clone()).await?;
-    let mut net1 = Net::new("model2",20, backs.clone()).await?;
+    let mut net1 = Net::new("model1",20, backs.clone()).await?;
+    net1.backprop(&training_data[point..limit]).await?;
 
-    for epoch in 0..epochs {
+    let mut net2 = Net::new("model2",20, backs.clone()).await?;
+    net2.backprop(&training_data[point..limit]).await?;
 
-        let limit = min(point + batch_size, training_data.len());
-        println!("Vefore Pushing");
+    for epoch in 1..epochs {
+
+        net1 = Net::new("model1",20, backs.clone()).await?;
         net1.backprop(&training_data[point..limit]).await?;
-        println!("Done pushing Model 1, before Model 2");
+
+        net2 = Net::new("model2",20, backs.clone()).await?;
         net2.backprop(&training_data[point..limit]).await?;
-        println!("Done Pushing Model 2");
+
         if log_interval > 0 && epoch % log_interval == 0 {
             eprintln!("Net 1, Worker 1 - Epoch {}: {}", epoch, net1.cost(&training_data.clone()));
             eprintln!("Net 2, Worker 1 - Epoch {}: {}", epoch, net2.cost(&training_data.clone()));
         }
-        if (epoch < epochs-1){
-            println!("Before Pulling Model 1");
-            net1 = Net::new("model1",20, backs.clone()).await?;
-            println!("Done Pulling Model 1, before Model 2");
-            net2 = Net::new("model2",20, backs.clone()).await?;
-            println!("Done Pulling Model 2");
-        }
+
     }
 
 

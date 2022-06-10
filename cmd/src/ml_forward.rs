@@ -9,6 +9,8 @@ use mlserver::rpc::{Clock, DoubleList, ModelPull};
 use mlserver::rpc::parameter_server_client::ParameterServerClient;
 use mlserver::serve::new_bin_client;
 use mlserver::storage::BinStorage;
+use std::thread;
+use std::time::Duration;
 
 /// Data structure to hold the net
 
@@ -38,7 +40,7 @@ impl Net {
         let mut ws: Vec<f64> = Vec::new();
         let mut bs: Vec<f64> = Vec::new();
         match response {
-            Err(e) => {},
+            Err(e) => {thread::sleep(Duration::from_millis(10));},
             Ok(res) => {
                 gotResponse = true;
                 ws = res.ws1;
@@ -52,7 +54,7 @@ impl Net {
                 clock: clock_response,
             }).await;
             match response {
-                Err(e) => {},
+                Err(e) => {thread::sleep(Duration::from_millis(10));},
                 Ok(res) => {
                     gotResponse = true;
                     ws = res.ws1;

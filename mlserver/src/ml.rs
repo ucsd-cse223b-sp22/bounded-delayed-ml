@@ -102,36 +102,13 @@ impl MLModel for MLStorage {
                     }],
                 );
             }
-            // Some(uq) => {
-            //     let updater_check = uq.to_vec();
-            //     if (loop_iter == 0) {
-            //     }
-            //     loop_iter += 1;
-            //     let pos = uq.iter().position(|x| x.clock == model_pull.clock);
-            //     match pos {
-            //         None => {
-            //             return Err(Box::new(TribblerError::RpcError("Error".to_string())));
-            //         }
-            //         Some(p) => {
-            //             if uq.len() > 1 {
-            //                 if uq.index(p - 1).done == false {
-            //                 }
-            //             }
-            //             uq.push(WorkerStatus {
-            //                 clock: model_pull.clock,
-            //                 done: false,
-            //             });
-            //         }
-            //     }
-            // }
+
             Some(uq) => {
                 let updater_check = uq.to_vec();
                 let pos = uq.len() - 1;
 
                 if uq.len() > n_bound {
                     if uq[pos - (n_bound - 1)].done == false {
-                        println!("Pull: {:?}", uq);
-                        drop(updater_queue_map);
                         return Err(Box::new(TribblerError::RpcError(
                             "Other worker not finished updating".to_string(),
                         )));
@@ -191,7 +168,6 @@ impl MLModel for MLStorage {
                 // println!("UPDATING WEIGHTS");
 
                 updater_queue[pos].done = true;
-                println!("Push: {:?}", updater_queue[pos].clock);
                 Ok(true)
             }
         };
