@@ -30,13 +30,39 @@ impl Net {
         let bin_client = new_bin_client(backs).await?;
         let bin = bin_client.bin(model_name.clone()).await?;
         let clock_response = bin.clock(0).await.unwrap();
-        let response = bin.pull(mlserver::ml::ModelPull {
+        let mut gotResponse = false;
+        let mut response = bin.pull(mlserver::ml::ModelPull {
             name: model_name.clone().to_string(),
             clock: clock_response,
-        }).await.unwrap();
-        let ws: Vec<f64> = response.ws1;
-        let bs: Vec<f64> = response.bs1;
-        Ok(Net { model_name: model_name.to_string(), ws, bs, ns, clock_id: clock_response, bin_client })
+        }).await;
+        let mut ws: Vec<f64> = Vec::new();
+        let mut bs: Vec<f64> = Vec::new();
+        match response {
+            Err(e) => {},
+            Ok(res) => {
+                gotResponse = true;
+                ws = res.ws1;
+                bs = res.bs1;
+                return Ok(Net { model_name: model_name.to_string(), ws, bs, ns, clock_id: clock_response, bin_client });
+            }
+        }
+        while (!gotResponse){
+            response = bin.pull(mlserver::ml::ModelPull {
+                name: model_name.clone().to_string(),
+                clock: clock_response,
+            }).await;
+            match response {
+                Err(e) => {},
+                Ok(res) => {
+                    gotResponse = true;
+                    ws = res.ws1;
+                    bs = res.bs1;
+                    return Ok(Net { model_name: model_name.to_string(), ws, bs, ns, clock_id: clock_response, bin_client });
+                }
+            }
+        }
+        
+        Ok(Net {model_name: model_name.to_string(), ws, bs, ns, clock_id: clock_response, bin_client})
     }
 
     /// Calculates an index into the weights/biases vector

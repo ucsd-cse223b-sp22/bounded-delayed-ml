@@ -5,6 +5,8 @@ use cmd::backs::BACKS;
 use cmd::ml_forward::Net;
 use mlserver::err::TribResult;
 use mlserver::serve::new_bin_client;
+use std::thread;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> TribResult<()> {
@@ -15,13 +17,13 @@ async fn main() -> TribResult<()> {
     }
     ;
 
-    let training_data: Vec<(f64, f64)> = (1..=100)
-        .step_by(7)
+    let training_data: Vec<(f64, f64)> = (1..=50)
+        // .step_by(7)
         .map(|x| (x as f64) / 100.0)
         .map(|x| (x, original_fn(x)))
         .collect();
 
-    let validation_data: Vec<(f64, f64)> = (20..=60)
+    let validation_data: Vec<(f64, f64)> = (100..=110)
         .map(|x| (x as f64) / 100.0)
         .map(|x| (x, original_fn(x)))
         .collect();
@@ -35,22 +37,37 @@ async fn main() -> TribResult<()> {
 
     let log_interval = epochs / 100;
     //TODO:: Take this from queue and execute backprop for each model individually
-    let mut net = Net::new("model2", 20, backs.clone()).await?;
+    let mut net2 = Net::new("model2", 20, backs.clone()).await?;
+    let mut net1 = Net::new("model1", 20, backs.clone()).await?;
 
     for epoch in 0..epochs {
+        
         let limit = min(point + batch_size, training_data.len());
-        net.backprop(&training_data[point..limit]).await?;
+        println!("Before pushing");
+        net2.backprop(&training_data[point..limit]).await?;
+        println!("Done PUshing Model 2, before model 1");
+        net1.backprop(&training_data[point..limit]).await?;
+        println!("Done PUshing model 1");
         if log_interval > 0 && epoch % log_interval == 0 {
-            eprintln!("Epoch {}: {}", epoch, net.cost(&training_data.clone()));
+            eprintln!("Net 2, Worker 2 Epoch {}: {}", epoch, net2.cost(&training_data.clone()));
+            eprintln!("Net 1, Worker 2 Epoch {}: {}", epoch, net1.cost(&training_data.clone()));
         }
-        net = Net::new("model2", 20, backs.clone()).await?;
+        if (epoch < epochs - 1){
+            println!("Before Pulling Model 2");
+            net2 = Net::new("model2", 20, backs.clone()).await?;
+            println!("Done Pulling Model 2, before Model 1");
+            net1 = Net::new("model1", 20, backs.clone()).await?;
+            println!("Done Pulling Model 1");
+        }
     }
 
 
     eprintln!("Training duration: {}s", start.elapsed().as_secs());
-    eprintln!("Validation error: {}", net.cost(&validation_data));
+    eprintln!("Validation error Net 2 Worker 2: {}", net2.cost(&validation_data));
+    eprintln!("Validation error Net 1 Worker 2: {}", net1.cost(&validation_data));
     for (x, y) in &training_data[point..batch_size] {
-        println!("{}\t{}\t{}", x, original_fn(*x), net.eval(*x));
+        println!("Net 1 Worker 2: {}\t{}\t{}", x, original_fn(*x), net1.eval(*x));
+        println!("Net 2 Worker 2: {}\t{}\t{}", x, original_fn(*x), net2.eval(*x));
     }
     Ok(())
 }
