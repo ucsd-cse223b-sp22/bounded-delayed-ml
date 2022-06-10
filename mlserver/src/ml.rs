@@ -5,9 +5,11 @@ use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::ops::Index;
 use std::sync::RwLock;
+use std::thread;
+use std::time::Duration;
 use tonic::{Code, Response, Status};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WorkerStatus {
     pub clock: u64,
     pub done: bool,
@@ -71,7 +73,7 @@ impl MLModel for MLStorage {
         let model_name = double_list.model_name;
         ws_map.insert(model_name.clone(), double_list.ws1.to_vec());
         bs_map.insert(model_name.clone(), double_list.bs1.to_vec());
-        lr_map.insert(model_name.clone(), 0.000001);
+        lr_map.insert(model_name.clone(), 0.0001);
         Ok(EmptyRequest { empty: true })
     }
 
@@ -89,6 +91,7 @@ impl MLModel for MLStorage {
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList> {
         let mut updater_queue_map = self.updater_queue.write().map_err(|e| e.to_string())?;
         let mut updater_queue = updater_queue_map.get_mut(&*model_pull.name);
+        let n_bound = 1;
         match updater_queue {
             None => {
                 updater_queue_map.insert(
@@ -99,23 +102,22 @@ impl MLModel for MLStorage {
                     }],
                 );
             }
+
             Some(uq) => {
                 let updater_check = uq.to_vec();
+                let pos = uq.len() - 1;
+
+                if uq.len() > n_bound {
+                    if uq[pos - (n_bound - 1)].done == false {
+                        return Err(Box::new(TribblerError::RpcError(
+                            "Other worker not finished updating".to_string(),
+                        )));
+                    }
+                }
                 uq.push(WorkerStatus {
                     clock: model_pull.clock,
                     done: false,
                 });
-                let pos = uq.iter().position(|x| x.clock == model_pull.clock);
-                match pos {
-                    None => {
-                        return Err(Box::new(TribblerError::RpcError("Error".to_string())));
-                    }
-                    Some(p) => {
-                        if uq.len() > 4 {
-                            while uq.index(p - 4).done == false {}
-                        }
-                    }
-                }
             }
         }
         let ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
