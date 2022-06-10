@@ -1,5 +1,5 @@
 use crate::err::TribResult;
-use crate::ml::MLModel;
+use crate::ml::{MLModel, ModelDump};
 use crate::rpc::parameter_server_server::ParameterServer;
 use crate::rpc::{Clock, DoubleList, EmptyRequest, ModelPull};
 use tonic::{Request, Response, Status};
@@ -44,5 +44,13 @@ impl MLModel for MyParameterServerBin {
 
     async fn clock(&self, at_least: u64) -> TribResult<u64> {
         Ok(self.client.clock(at_least).await?)
+    }
+
+    async fn get_model_dump(&self) -> TribResult<ModelDump> {
+        Ok(self.client.get_model_dump().await?)
+    }
+
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()> {
+        Ok(self.client.merge_model_dump(model_dump).await?)
     }
 }

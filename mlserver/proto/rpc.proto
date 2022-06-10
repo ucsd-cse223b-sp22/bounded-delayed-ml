@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 package rpc;
 
 message Clock {
@@ -27,16 +29,21 @@ message WorkerStatus {
   bool done = 2;
 }
 
-message Pair {
+message WeightsPair {
   string key = 1;
-  repeated float value = 2;
+  repeated double value = 2;
 }
 
-message StorageDump {
-  repeated WorkerStatus updater_queue = 2;
-  repeated Pair ws1 = 3;
-  repeated Pair bs1 = 4;
-  float lr = 5;
+//message QueuePair {
+//  string key = 1;
+//  repeated WorkerStatus value = 2;
+//}
+
+message ModelDump {
+  repeated WorkerStatus updater_queue = 1;
+  repeated WeightsPair ws1 = 2;
+  repeated WeightsPair bs1 = 3;
+  double lr = 4;
 }
 
 service ParameterServer {
@@ -46,5 +53,6 @@ service ParameterServer {
   rpc pull(ModelPull) returns (DoubleList);
   rpc push(DoubleList) returns (EmptyRequest);
   rpc clock(Clock) returns (Clock);
-  rpc get_model_dump(EmptyRequest) returns (StorageDump);
+  rpc get_model_dump(google.protobuf.Empty) returns (ModelDump);
+  rpc merge_model_dump(ModelDump) returns (EmptyRequest);
 }

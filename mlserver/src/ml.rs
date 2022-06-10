@@ -50,6 +50,8 @@ pub trait MLModel: Send + Sync {
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList>;
     async fn push(&self, double_list: DoubleList) -> TribResult<bool>;
     async fn clock(&self, at_least: u64) -> TribResult<u64>;
+    async fn get_model_dump(&self) -> TribResult<ModelDump>;
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()>;
 }
 
 pub struct MLStorage {
@@ -200,14 +202,13 @@ impl MLModel for MLStorage {
     async fn get_model_dump(&self) -> TribResult<ModelDump> {
         let mut updater_queue = self
             .updater_queue
-            .write()
+            .into_inner()
             .map_err(|e| e.to_string())
             .unwrap();
-        let ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
-        let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
+        let ws_map = self.ws1.into_inner().map_err(|e| e.to_string()).unwrap();
+        let bs_map = self.bs1.into_inner().map_err(|e| e.to_string()).unwrap();
         let mut clk = self.clock.write().map_err(|e| e.to_string())?;
         Ok(ModelDump {
-            clock: clk,
             updater_queue,
             ws1: ws_map,
             bs1: bs_map,
@@ -215,16 +216,16 @@ impl MLModel for MLStorage {
         })
     }
 
-    async fn merge_model_dump(&self, model_dump: ModelDump) {
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()> {
         let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
         let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
-        for (model, val) in model_dump.ws1.into_iter {
-            ws_map.insert(&*model, val);
+        for (model, val) in model_dump.ws1.into_iter() {
+            ws_map.insert((&*model).to_string(), val);
         }
-        for (model, val) in model_dump.bs1.into_iter {
-            bs_map.insert(&*model, val);
+        for (model, val) in model_dump.bs1.into_iter() {
+            bs_map.insert((&*model).to_string(), val);
         }
         // TODO: Handle queue and LR
+        Ok(())
     }
-
 }

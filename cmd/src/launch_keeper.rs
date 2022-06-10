@@ -2,11 +2,6 @@ use log::{info, warn};
 use std::net::ToSocketAddrs;
 use tokio::join;
 
-pub struct SyncClockResp {
-    pub largest_clock: u64,
-    pub alive_backends: Vec<String>,
-}
-
 #[tokio::main]
 pub async fn main() {
     let backs = vec![
