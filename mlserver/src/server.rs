@@ -128,26 +128,38 @@ impl ParameterServer for MLServer {
                 let hashmap_ws1 = model.ws1;
                 let hashmap_bs1 = model.bs1;
                 let hashmap_queue = model.updater_queue;
+                let hashmap_lr = model.lr;
                 let mut vec_pair_ws1 = Vec::new();
                 let mut vec_pair_bs1 = Vec::new();
                 let mut vec_pair_queue = Vec::new();
+                let mut vec_pair_lr = Vec::new();
                 for (k, val) in hashmap_ws1.into_iter() {
                     vec_pair_ws1.push(WeightsPair { key: k, value: val })
                 }
                 for (k, val) in hashmap_bs1.into_iter() {
                     vec_pair_bs1.push(WeightsPair { key: k, value: val })
                 }
-                for val in hashmap_queue.into_iter() {
-                    vec_pair_queue.push(WorkerStatus {
-                        clock: val.clock,
-                        done: val.done,
+                for (k, val) in hashmap_lr.into_iter() {
+                    vec_pair_lr.push(rpc::LearningRatePair { key: k, value: val })
+                }
+                for (k, val) in hashmap_queue.into_iter() {
+                    let mut vec_worker_status = vec![];
+                    for ele in val.into_iter() {
+                        vec_worker_status.push(rpc::WorkerStatus {
+                            clock: ele.clock,
+                            done: ele.done,
+                        })
+                    }
+                    vec_pair_queue.push(rpc::QueuePair {
+                        key: k,
+                        value: vec_worker_status,
                     })
                 }
                 Ok(Response::new(rpc::ModelDump {
                     updater_queue: vec_pair_queue,
                     ws1: vec_pair_ws1,
                     bs1: vec_pair_bs1,
-                    lr: model.lr,
+                    lr: vec_pair_lr,
                 }))
             }
             Err(_) => return Err(Status::new(Code::Internal, "Error occurred")),
@@ -164,20 +176,30 @@ impl ParameterServer for MLServer {
         let vec_pair_ws1 = request.ws1;
         let vec_pair_bs1 = request.bs1;
         let vec_pair_queue = request.updater_queue;
+        let vec_pair_lr = request.lr;
         let mut hashmap_ws1 = HashMap::new();
         let mut hashmap_bs1 = HashMap::new();
-        let mut hashmap_queue = Vec::new(); // FIXME: Change
+        let mut hashmap_queue = HashMap::new();
+        let mut hashmap_lr = HashMap::new();
         for val in vec_pair_ws1.into_iter() {
             hashmap_ws1.insert(val.key, val.value);
         }
         for val in vec_pair_bs1.into_iter() {
             hashmap_bs1.insert(val.key, val.value);
         }
+        for val in vec_pair_lr.into_iter() {
+            hashmap_lr.insert(val.key, val.value);
+        }
         for val in vec_pair_queue.into_iter() {
-            hashmap_queue.push(ml::WorkerStatus {
-                clock: val.clock,
-                done: val.done,
-            });
+            let queue_pair = val.value;
+            let mut vec_worker_status = vec![];
+            for ele in queue_pair.into_iter() {
+                vec_worker_status.push(ml::WorkerStatus {
+                    clock: ele.clock,
+                    done: ele.done,
+                })
+            }
+            hashmap_queue.insert(val.key, vec_worker_status);
         }
         let _ = self
             .ml_model
@@ -185,7 +207,7 @@ impl ParameterServer for MLServer {
                 updater_queue: hashmap_queue,
                 ws1: hashmap_ws1,
                 bs1: hashmap_bs1,
-                lr: request.lr,
+                lr: hashmap_lr,
             })
             .await;
         Ok(Response::new(EmptyRequest { empty: true }))

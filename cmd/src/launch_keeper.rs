@@ -13,7 +13,7 @@ pub async fn main() {
     println!("STARTING KEEPER");
     let mut handles = vec![];
     for (i, srv) in keeper.iter().enumerate() {
-        handles.push(tokio::spawn(run_srv(backs, srv.to_string())));
+        handles.push(tokio::spawn(run_srv(backs.clone(), srv.to_string())));
     }
 
     for h in handles {

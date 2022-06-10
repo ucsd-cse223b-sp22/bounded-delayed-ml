@@ -2,7 +2,9 @@ use crate::err::TribResult;
 use crate::ml::{MLModel, WorkerStatus};
 use crate::rpc::parameter_server_client::ParameterServerClient;
 use crate::rpc::parameter_server_server::ParameterServer;
-use crate::rpc::{Clock, DoubleList, EmptyRequest, ModelPull, WeightsPair};
+use crate::rpc::{
+    Clock, DoubleList, EmptyRequest, LearningRatePair, ModelPull, QueuePair, WeightsPair,
+};
 use crate::{ml, rpc};
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -90,31 +92,41 @@ impl MLModel for ParameterClient {
 
     async fn get_model_dump(&self) -> TribResult<ml::ModelDump> {
         let mut client = self.client.clone();
-        let storage_dump = client.get_model_dump(()).await?.into_inner();
+        let model_dump = client.get_model_dump(()).await?.into_inner();
         // Deserialize
-        let vec_pair_ws1 = storage_dump.ws1;
-        let vec_pair_bs1 = storage_dump.bs1;
-        let vec_pair_queue = storage_dump.updater_queue;
+        let vec_pair_ws1 = model_dump.ws1;
+        let vec_pair_bs1 = model_dump.bs1;
+        let vec_pair_queue = model_dump.updater_queue;
+        let vec_pair_lr = model_dump.lr;
         let mut hashmap_ws1 = HashMap::new();
         let mut hashmap_bs1 = HashMap::new();
-        let mut hashmap_queue = Vec::new(); // FIXME: Change
+        let mut hashmap_queue = HashMap::new();
+        let mut hashmap_lr = HashMap::new();
         for val in vec_pair_ws1.into_iter() {
             hashmap_ws1.insert(val.key, val.value);
         }
         for val in vec_pair_bs1.into_iter() {
             hashmap_bs1.insert(val.key, val.value);
         }
+        for val in vec_pair_lr.into_iter() {
+            hashmap_lr.insert(val.key, val.value);
+        }
         for val in vec_pair_queue.into_iter() {
-            hashmap_queue.push(WorkerStatus {
-                clock: val.clock,
-                done: val.done,
-            });
+            let queue_pair = val.value;
+            let mut vec_worker_status = vec![];
+            for ele in queue_pair.into_iter() {
+                vec_worker_status.push(ml::WorkerStatus {
+                    clock: ele.clock,
+                    done: ele.done,
+                })
+            }
+            hashmap_queue.insert(val.key, vec_worker_status);
         }
         Ok(ml::ModelDump {
             updater_queue: hashmap_queue,
             ws1: hashmap_ws1,
             bs1: hashmap_bs1,
-            lr: storage_dump.lr, // FIXME: Change
+            lr: hashmap_lr,
         })
     }
 
@@ -124,26 +136,38 @@ impl MLModel for ParameterClient {
         let hashmap_ws1 = model_dump.ws1;
         let hashmap_bs1 = model_dump.bs1;
         let hashmap_queue = model_dump.updater_queue;
+        let hashmap_lr = model_dump.lr;
         let mut vec_pair_ws1 = Vec::new();
         let mut vec_pair_bs1 = Vec::new();
         let mut vec_pair_queue = Vec::new();
+        let mut vec_pair_lr = Vec::new();
         for (k, val) in hashmap_ws1.into_iter() {
             vec_pair_ws1.push(WeightsPair { key: k, value: val })
         }
         for (k, val) in hashmap_bs1.into_iter() {
             vec_pair_bs1.push(WeightsPair { key: k, value: val })
         }
-        for val in hashmap_queue.into_iter() {
-            vec_pair_queue.push(rpc::WorkerStatus {
-                clock: val.clock,
-                done: val.done,
+        for (k, val) in hashmap_lr.into_iter() {
+            vec_pair_lr.push(LearningRatePair { key: k, value: val })
+        }
+        for (k, val) in hashmap_queue.into_iter() {
+            let mut vec_worker_status = vec![];
+            for ele in val.into_iter() {
+                vec_worker_status.push(rpc::WorkerStatus {
+                    clock: ele.clock,
+                    done: ele.done,
+                })
+            }
+            vec_pair_queue.push(QueuePair {
+                key: k,
+                value: vec_worker_status,
             })
         }
         let model_dump = rpc::ModelDump {
             updater_queue: vec_pair_queue,
             ws1: vec_pair_ws1,
             bs1: vec_pair_bs1,
-            lr: model_dump.lr,
+            lr: vec_pair_lr,
         };
         let _ = client.merge_model_dump(model_dump).await;
         Ok(())

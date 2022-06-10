@@ -35,7 +35,7 @@ fn vec_equals(first: Vec<String>, second: Vec<String>) -> bool {
     return true;
 }
 
-pub(crate) async fn serve_keeper(backs: Vec<String>, keeper: String) -> TribResult<()> {
+pub async fn serve_keeper(backs: Vec<String>, keeper: String) -> TribResult<()> {
     return synchronize_clocks(backs).await;
 }
 

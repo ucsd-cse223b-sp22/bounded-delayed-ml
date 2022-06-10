@@ -34,16 +34,21 @@ message WeightsPair {
   repeated double value = 2;
 }
 
-//message QueuePair {
-//  string key = 1;
-//  repeated WorkerStatus value = 2;
-//}
+message QueuePair {
+  string key = 1;
+  repeated WorkerStatus value = 2;
+}
+
+message LearningRatePair {
+  string key = 1;
+  double value = 2;
+}
 
 message ModelDump {
-  repeated WorkerStatus updater_queue = 1;
+  repeated QueuePair updater_queue = 1;
   repeated WeightsPair ws1 = 2;
   repeated WeightsPair bs1 = 3;
-  double lr = 4;
+  repeated LearningRatePair lr = 4;
 }
 
 service ParameterServer {

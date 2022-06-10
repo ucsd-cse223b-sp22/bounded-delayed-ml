@@ -32,10 +32,10 @@ pub struct DoubleList {
 }
 
 pub struct ModelDump {
-    pub updater_queue: Vec<WorkerStatus>,
+    pub updater_queue: HashMap<String, Vec<WorkerStatus>>,
     pub ws1: HashMap<String, Vec<f64>>,
     pub bs1: HashMap<String, Vec<f64>>,
-    pub lr: f64,
+    pub lr: HashMap<String, f64>,
 }
 
 #[async_trait]
@@ -200,32 +200,44 @@ impl MLModel for MLStorage {
     }
 
     async fn get_model_dump(&self) -> TribResult<ModelDump> {
-        let mut updater_queue = self
+        let mut queue_map = self
             .updater_queue
-            .into_inner()
+            .read()
             .map_err(|e| e.to_string())
             .unwrap();
-        let ws_map = self.ws1.into_inner().map_err(|e| e.to_string()).unwrap();
-        let bs_map = self.bs1.into_inner().map_err(|e| e.to_string()).unwrap();
-        let mut clk = self.clock.write().map_err(|e| e.to_string())?;
+        let mut ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
+        let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
+        let lr_map = self.lr.read().map_err(|e| e.to_string()).unwrap();
         Ok(ModelDump {
-            updater_queue,
-            ws1: ws_map,
-            bs1: bs_map,
-            lr: self.lr,
+            updater_queue: (*queue_map).clone(),
+            ws1: (*ws_map).clone(),
+            bs1: (*bs_map).clone(),
+            lr: (*lr_map).clone(),
         })
     }
 
     async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()> {
+        // TODO: Verify the merge logic here
+        let mut updater_queue_map = self
+            .updater_queue
+            .write()
+            .map_err(|e| e.to_string())
+            .unwrap();
         let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
         let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
+        let mut lr_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
+        for (model, val) in model_dump.updater_queue.into_iter() {
+            updater_queue_map.insert((&*model).to_string(), val);
+        }
         for (model, val) in model_dump.ws1.into_iter() {
             ws_map.insert((&*model).to_string(), val);
         }
         for (model, val) in model_dump.bs1.into_iter() {
             bs_map.insert((&*model).to_string(), val);
         }
-        // TODO: Handle queue and LR
+        for (model, val) in model_dump.lr.into_iter() {
+            lr_map.insert((&*model).to_string(), val);
+        }
         Ok(())
     }
 }

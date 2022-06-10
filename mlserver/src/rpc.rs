@@ -26,6 +26,45 @@ pub struct DoubleList {
     #[prost(double, repeated, tag = "4")]
     pub bs1: ::prost::alloc::vec::Vec<f64>,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkerStatus {
+    #[prost(uint64, tag = "1")]
+    pub clock: u64,
+    #[prost(bool, tag = "2")]
+    pub done: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WeightsPair {
+    #[prost(string, tag = "1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(double, repeated, tag = "2")]
+    pub value: ::prost::alloc::vec::Vec<f64>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueuePair {
+    #[prost(string, tag = "1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub value: ::prost::alloc::vec::Vec<WorkerStatus>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LearningRatePair {
+    #[prost(string, tag = "1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(double, tag = "2")]
+    pub value: f64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ModelDump {
+    #[prost(message, repeated, tag = "1")]
+    pub updater_queue: ::prost::alloc::vec::Vec<QueuePair>,
+    #[prost(message, repeated, tag = "2")]
+    pub ws1: ::prost::alloc::vec::Vec<WeightsPair>,
+    #[prost(message, repeated, tag = "3")]
+    pub bs1: ::prost::alloc::vec::Vec<WeightsPair>,
+    #[prost(message, repeated, tag = "4")]
+    pub lr: ::prost::alloc::vec::Vec<LearningRatePair>,
+}
 #[doc = r" Generated client implementations."]
 pub mod parameter_server_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -170,6 +209,35 @@ pub mod parameter_server_client {
             let path = http::uri::PathAndQuery::from_static("/rpc.ParameterServer/clock");
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn get_model_dump(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> Result<tonic::Response<super::ModelDump>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/rpc.ParameterServer/get_model_dump");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn merge_model_dump(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ModelDump>,
+        ) -> Result<tonic::Response<super::EmptyRequest>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/rpc.ParameterServer/merge_model_dump");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
     }
 }
 #[doc = r" Generated server implementations."]
@@ -203,6 +271,14 @@ pub mod parameter_server_server {
             &self,
             request: tonic::Request<super::Clock>,
         ) -> Result<tonic::Response<super::Clock>, tonic::Status>;
+        async fn get_model_dump(
+            &self,
+            request: tonic::Request<()>,
+        ) -> Result<tonic::Response<super::ModelDump>, tonic::Status>;
+        async fn merge_model_dump(
+            &self,
+            request: tonic::Request<super::ModelDump>,
+        ) -> Result<tonic::Response<super::EmptyRequest>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct ParameterServerServer<T: ParameterServer> {
@@ -416,6 +492,65 @@ pub mod parameter_server_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = clockSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rpc.ParameterServer/get_model_dump" => {
+                    #[allow(non_camel_case_types)]
+                    struct get_model_dumpSvc<T: ParameterServer>(pub Arc<T>);
+                    impl<T: ParameterServer> tonic::server::UnaryService<()> for get_model_dumpSvc<T> {
+                        type Response = super::ModelDump;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).get_model_dump(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = get_model_dumpSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rpc.ParameterServer/merge_model_dump" => {
+                    #[allow(non_camel_case_types)]
+                    struct merge_model_dumpSvc<T: ParameterServer>(pub Arc<T>);
+                    impl<T: ParameterServer> tonic::server::UnaryService<super::ModelDump> for merge_model_dumpSvc<T> {
+                        type Response = super::EmptyRequest;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ModelDump>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).merge_model_dump(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = merge_model_dumpSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

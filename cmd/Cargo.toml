@@ -23,6 +23,7 @@ rand = "0.8"
 name = "launch-server"
 path = "src/launch_servers.rs"
 
+[[bin]]
 name = "launch-worker-1"
 path = "src/launch_worker_1.rs"
 
