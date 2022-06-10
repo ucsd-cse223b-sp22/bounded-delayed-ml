@@ -28,7 +28,7 @@ async fn main() -> TribResult<()> {
         .map(|x| (x, original_fn(x)))
         .collect();
 
-    let epochs = 100000;
+    let epochs = 1000;
     let batch_size = 5;
     let start = Instant::now();
 
@@ -36,6 +36,8 @@ async fn main() -> TribResult<()> {
     let mut point = 0;
 
     let log_interval = epochs / 100;
+
+    
     //TODO:: Take this from queue and execute backprop for each model individually
     let mut net1 = Net::new("model1",20, backs.clone()).await?;
     let limit = min(point + batch_size, training_data.len());

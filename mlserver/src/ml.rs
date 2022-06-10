@@ -73,7 +73,7 @@ impl MLModel for MLStorage {
         let model_name = double_list.model_name;
         ws_map.insert(model_name.clone(), double_list.ws1.to_vec());
         bs_map.insert(model_name.clone(), double_list.bs1.to_vec());
-        lr_map.insert(model_name.clone(), 0.0001);
+        lr_map.insert(model_name.clone(), 0.000001);
         Ok(EmptyRequest { empty: true })
     }
 

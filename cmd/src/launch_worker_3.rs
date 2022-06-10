@@ -28,7 +28,7 @@ async fn main() -> TribResult<()> {
         .map(|x| (x, original_fn(x)))
         .collect();
 
-    let epochs = 100000;
+    let epochs = 1000;
     let batch_size = 5;
     let start = Instant::now();
 
