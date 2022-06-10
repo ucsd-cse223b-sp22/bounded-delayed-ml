@@ -1,6 +1,6 @@
 use crate::client::ParameterClient;
 use crate::err::TribResult;
-use crate::ml::MLModel;
+use crate::ml::{EmptyRequest, MLModel};
 use crate::rpc::parameter_server_client::ParameterServerClient;
 use tokio::time;
 
@@ -46,7 +46,6 @@ async fn synchronize_clocks(backs: Vec<String>) -> TribResult<()> {
     let mut sync_clock_resp: SyncClockResp;
     let mut backs_alive_last_checked: Vec<String> = vec![];
     let mut backs_alive_recent_check: Vec<String>;
-    let chord_ring: Vec<ChordBacks>;
     loop {
         interval.tick().await;
         sync_clock_resp = do_synchronize_clock(clock_val, backs.clone()).await?;
@@ -164,7 +163,6 @@ async fn do_data_migration(
         if !found {
             let predAddress = back.predecessor.clone();
             let succAddress = back.successor.clone();
-            let thisAddress = back.this_addr.clone();
 
             let predAddressFormatted = format!("http://{}", predAddress.clone());
             let succAddressFormatted = format!("http://{}", succAddress.clone());
@@ -176,13 +174,18 @@ async fn do_data_migration(
             let succ_conn = ParameterServerClient::connect(succAddressFormatted.clone()).await?;
             let succ_client = ParameterClient { client: succ_conn };
 
-            // TODO: Set ready flag to false
+            succ_client.set_ready(EmptyRequest{
+                empty: false
+            }).await?;
             let data_on_predecessor = pred_client.get_model_dump().await?;
             let data_on_successor = succ_client.get_model_dump().await?;
 
             pred_client.merge_model_dump(data_on_successor).await?;
             succ_client.merge_model_dump(data_on_predecessor).await?;
-            // TODO: Set ready flag to true
+            succ_client.set_ready(EmptyRequest{
+                empty: true
+            }).await?;
+            // TODO: Handle SuccessorSuccessor data
         }
     }
 
@@ -202,6 +205,7 @@ async fn do_data_migration(
 
             let thisAddressFormatted = format!("http://{}", thisAddress.clone());
             let succAddressFormatted = format!("http://{}", succAddress.clone());
+            let thisAddressFormatted = format!("http://{}", thisAddress.clone());
 
             let mut this_conn =
                 ParameterServerClient::connect(thisAddressFormatted.clone()).await?;
@@ -209,6 +213,9 @@ async fn do_data_migration(
 
             let succ_conn = ParameterServerClient::connect(succAddressFormatted.clone()).await?;
             let succ_client = ParameterClient { client: succ_conn };
+
+            let mut this_conn = ParameterServerClient::connect(thisAddressFormatted.clone()).await?;
+            let this_client = ParameterClient {client: this_conn};
 
             // TODO: Set ready flag to false
             let data_on_successor = succ_client.get_model_dump().await?;

@@ -227,15 +227,19 @@ impl MLModel for MLStorage {
         let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
         let mut lr_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
         for (model, val) in model_dump.updater_queue.into_iter() {
+            updater_queue_map.remove(&*model);
             updater_queue_map.insert((&*model).to_string(), val);
         }
         for (model, val) in model_dump.ws1.into_iter() {
+            ws_map.remove(&*model);
             ws_map.insert((&*model).to_string(), val);
         }
         for (model, val) in model_dump.bs1.into_iter() {
+            bs_map.remove(&*model);
             bs_map.insert((&*model).to_string(), val);
         }
         for (model, val) in model_dump.lr.into_iter() {
+            lr_map.remove(&*model);
             lr_map.insert((&*model).to_string(), val);
         }
         Ok(())
