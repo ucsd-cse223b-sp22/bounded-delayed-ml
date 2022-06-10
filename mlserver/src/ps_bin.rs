@@ -1,4 +1,5 @@
 use crate::err::TribResult;
+use crate::ml;
 use crate::ml::{MLModel, ModelDump};
 use crate::rpc::parameter_server_server::ParameterServer;
 use crate::rpc::{Clock, DoubleList, EmptyRequest, ModelPull};
@@ -17,6 +18,7 @@ impl MLModel for MyParameterServerBin {
         &self,
         double_list: crate::ml::DoubleList,
     ) -> TribResult<crate::ml::EmptyRequest> {
+        self.replica_client.initialize(double_list.clone()).await?;
         Ok(self.client.initialize(double_list).await?)
     }
 
@@ -35,10 +37,12 @@ impl MLModel for MyParameterServerBin {
     }
 
     async fn pull(&self, model_pull: crate::ml::ModelPull) -> TribResult<crate::ml::DoubleList> {
+        self.replica_client.pull(model_pull.clone()).await?;
         Ok(self.client.pull(model_pull).await?)
     }
 
     async fn push(&self, double_list: crate::ml::DoubleList) -> TribResult<bool> {
+        self.replica_client.push(double_list.clone()).await?;
         Ok(self.client.push(double_list).await?)
     }
 

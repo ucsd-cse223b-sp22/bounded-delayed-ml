@@ -19,11 +19,13 @@ pub struct EmptyRequest {
     pub empty: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct ModelPull {
     pub name: String,
     pub clock: u64,
 }
 
+#[derive(Clone, Debug)]
 pub struct DoubleList {
     pub clock: u64,
     pub model_name: String,

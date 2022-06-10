@@ -174,18 +174,13 @@ async fn do_data_migration(
             let succ_conn = ParameterServerClient::connect(succAddressFormatted.clone()).await?;
             let succ_client = ParameterClient { client: succ_conn };
 
-            succ_client.set_ready(EmptyRequest{
-                empty: false
-            }).await?;
+            succ_client.set_ready(EmptyRequest { empty: false }).await?;
             let data_on_predecessor = pred_client.get_model_dump().await?;
             let data_on_successor = succ_client.get_model_dump().await?;
 
-            pred_client.merge_model_dump(data_on_successor).await?;
             succ_client.merge_model_dump(data_on_predecessor).await?;
-            succ_client.set_ready(EmptyRequest{
-                empty: true
-            }).await?;
-            // TODO: Handle SuccessorSuccessor data
+            succ_client.set_ready(EmptyRequest { empty: true }).await?;
+            // TODO: Handle replication as replica of successor
         }
     }
 
@@ -203,7 +198,6 @@ async fn do_data_migration(
             let succAddress = back.successor.clone();
             let thisAddress = back.this_addr.clone();
 
-            let thisAddressFormatted = format!("http://{}", thisAddress.clone());
             let succAddressFormatted = format!("http://{}", succAddress.clone());
             let thisAddressFormatted = format!("http://{}", thisAddress.clone());
 
@@ -214,13 +208,11 @@ async fn do_data_migration(
             let succ_conn = ParameterServerClient::connect(succAddressFormatted.clone()).await?;
             let succ_client = ParameterClient { client: succ_conn };
 
-            let mut this_conn = ParameterServerClient::connect(thisAddressFormatted.clone()).await?;
-            let this_client = ParameterClient {client: this_conn};
-
-            // TODO: Set ready flag to false
+            this_conn.set_ready(EmptyRequest { empty: false }).await?;
             let data_on_successor = succ_client.get_model_dump().await?;
             this_conn.merge_model_dump(data_on_successor).await?;
-            // TODO: Set ready flag to true
+            this_conn.set_ready(EmptyRequest { empty: true }).await?;
+            // TODO: Handle replication as replica of predecessor
         }
     }
     Ok(())
