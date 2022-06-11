@@ -13,7 +13,7 @@ async fn main() -> TribResult<()> {
 
     let backs = BACKS.map(|x| x.to_string()).to_vec();
     fn original_fn(x: f64) -> f64 {
-        x * x  + x 
+        x * x + x 
     }
     ;
 

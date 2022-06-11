@@ -65,25 +65,25 @@ async fn main() -> TribResult<()> {
         net4.backprop(&training_data[point..limit]).await?;
 
         if log_interval > 0 && epoch % log_interval == 0 {
-            eprintln!("Net 1, Worker 2 - Epoch {}: {}", epoch, net1.cost(&training_data.clone()));
-            eprintln!("Net 2, Worker 2 - Epoch {}: {}", epoch, net2.cost(&training_data.clone()));
-            eprintln!("Net 3, Worker 2 - Epoch {}: {}", epoch, net3.cost(&training_data.clone()));
-            eprintln!("Net 4, Worker 2 - Epoch {}: {}", epoch, net4.cost(&training_data.clone()));
+            eprintln!("Net 1, Worker 3 - Epoch {}: {}", epoch, net1.cost(&training_data.clone()));
+            eprintln!("Net 2, Worker 3 - Epoch {}: {}", epoch, net2.cost(&training_data.clone()));
+            eprintln!("Net 3, Worker 3 - Epoch {}: {}", epoch, net3.cost(&training_data.clone()));
+            eprintln!("Net 4, Worker 3 - Epoch {}: {}", epoch, net4.cost(&training_data.clone()));
         }
 
     }
 
 
     eprintln!("Training duration: {}s", start.elapsed().as_secs());
-    eprintln!("Validation error Net 1 Worker 2: {}", net1.cost(&validation_data));
-    eprintln!("Validation error Net 2 Worker 2: {}", net2.cost(&validation_data));
-    eprintln!("Validation error Net 3 Worker 2: {}", net3.cost(&validation_data));
-    eprintln!("Validation error Net 4 Worker 2: {}", net4.cost(&validation_data));
+    eprintln!("Validation error Net 1 Worker 3: {}", net1.cost(&validation_data));
+    eprintln!("Validation error Net 2 Worker 3: {}", net2.cost(&validation_data));
+    eprintln!("Validation error Net 3 Worker 3: {}", net3.cost(&validation_data));
+    eprintln!("Validation error Net 4 Worker 3: {}", net4.cost(&validation_data));
     for (x, y) in &training_data[point..batch_size] {
-        println!("Net 1 Worker 2: {}\t{}\t{}", x, original_fn(*x), net1.eval(*x));
-        println!("Net 2 Worker 2: {}\t{}\t{}", x, original_fn(*x), net2.eval(*x));
-        println!("Net 3 Worker 2: {}\t{}\t{}", x, original_fn(*x), net3.eval(*x));
-        println!("Net 4 Worker 2: {}\t{}\t{}", x, original_fn(*x), net4.eval(*x));
+        println!("Net 1 Worker 3: {}\t{}\t{}", x, original_fn(*x), net1.eval(*x));
+        println!("Net 2 Worker 3: {}\t{}\t{}", x, original_fn(*x), net2.eval(*x));
+        println!("Net 3 Worker 3: {}\t{}\t{}", x, original_fn(*x), net3.eval(*x));
+        println!("Net 4 Worker 3: {}\t{}\t{}", x, original_fn(*x), net4.eval(*x));
     }
     Ok(())
 }

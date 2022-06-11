@@ -102,7 +102,7 @@ impl MLModel for MLStorage {
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList> {
         let mut updater_queue_map = self.updater_queue.write().map_err(|e| e.to_string())?;
         let mut updater_queue = updater_queue_map.get_mut(&*model_pull.name);
-        let n_bound = 1;
+        let n_bound = 4;
         match updater_queue {
             None => {
                 updater_queue_map.insert(

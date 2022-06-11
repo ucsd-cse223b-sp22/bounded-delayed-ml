@@ -9,10 +9,12 @@ use mlserver::ml::DoubleList;
 use mlserver::serve::new_bin_client;
 
 #[tokio::main]
-pub async fn main() -> TribResult<()> {
+pub async fn main() -> TribResult<()>{
     let model_names = [
         "model1".to_string(),
-        "model2".to_string()
+        "model2".to_string(),
+        "model3".to_string(),
+        "model4".to_string()
     ];
     let backs = BACKS.map(|x| x.to_string()).to_vec();
     let bin_client = new_bin_client(backs).await?;

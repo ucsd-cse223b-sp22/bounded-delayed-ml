@@ -32,6 +32,18 @@ name = "launch-worker-2"
 path = "src/launch_worker_2.rs"
 
 [[bin]]
+name = "launch-worker-3"
+path = "src/launch_worker_3.rs"
+
+[[bin]]
+name = "launch-worker-4"
+path = "src/launch_worker_4.rs"
+
+[[bin]]
+name = "sequential-training"
+path = "src/sequential_training.rs"
+
+[[bin]]
 name = "run-initializer"
 path = "src/run_initializer.rs"
 
