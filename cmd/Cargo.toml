@@ -31,7 +31,10 @@ path = "src/launch_worker_1.rs"
 name = "launch-worker-2"
 path = "src/launch_worker_2.rs"
 
-
 [[bin]]
 name = "run-initializer"
 path = "src/run_initializer.rs"
+
+[[bin]]
+name = "launch-keeper"
+path = "src/launch_keeper.rs"

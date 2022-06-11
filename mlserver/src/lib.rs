@@ -20,6 +20,7 @@
 pub mod bin_client;
 pub mod client;
 pub mod err;
+pub mod keeper;
 pub mod ml;
 pub mod ps_bin;
 pub mod rpc;

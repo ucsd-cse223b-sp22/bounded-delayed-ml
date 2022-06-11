@@ -19,16 +19,25 @@ pub struct EmptyRequest {
     pub empty: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct ModelPull {
     pub name: String,
     pub clock: u64,
 }
 
+#[derive(Clone, Debug)]
 pub struct DoubleList {
     pub clock: u64,
     pub model_name: String,
     pub ws1: Vec<f64>,
     pub bs1: Vec<f64>,
+}
+
+pub struct ModelDump {
+    pub updater_queue: HashMap<String, Vec<WorkerStatus>>,
+    pub ws1: HashMap<String, Vec<f64>>,
+    pub bs1: HashMap<String, Vec<f64>>,
+    pub lr: HashMap<String, f64>,
 }
 
 #[async_trait]
@@ -43,6 +52,8 @@ pub trait MLModel: Send + Sync {
     async fn pull(&self, model_pull: ModelPull) -> TribResult<DoubleList>;
     async fn push(&self, double_list: DoubleList) -> TribResult<bool>;
     async fn clock(&self, at_least: u64) -> TribResult<u64>;
+    async fn get_model_dump(&self) -> TribResult<ModelDump>;
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()>;
 }
 
 pub struct MLStorage {
@@ -149,6 +160,9 @@ impl MLModel for MLStorage {
         return match pos {
             None => Err(Box::new(TribblerError::RpcError("Error".to_string()))),
             Some(pos) => {
+                if updater_queue.len() > 4 {
+                    while updater_queue.index(pos - 4).done == false {}
+                }
                 let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
                 let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
                 let model_name = double_list.model_name;
@@ -185,5 +199,51 @@ impl MLModel for MLStorage {
             *clk += 1;
         }
         Ok(ret)
+    }
+
+    async fn get_model_dump(&self) -> TribResult<ModelDump> {
+        let mut queue_map = self
+            .updater_queue
+            .read()
+            .map_err(|e| e.to_string())
+            .unwrap();
+        let mut ws_map = self.ws1.read().map_err(|e| e.to_string()).unwrap();
+        let bs_map = self.bs1.read().map_err(|e| e.to_string()).unwrap();
+        let lr_map = self.lr.read().map_err(|e| e.to_string()).unwrap();
+        Ok(ModelDump {
+            updater_queue: (*queue_map).clone(),
+            ws1: (*ws_map).clone(),
+            bs1: (*bs_map).clone(),
+            lr: (*lr_map).clone(),
+        })
+    }
+
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()> {
+        // TODO: Verify the merge logic here
+        let mut updater_queue_map = self
+            .updater_queue
+            .write()
+            .map_err(|e| e.to_string())
+            .unwrap();
+        let mut ws_map = self.ws1.write().map_err(|e| e.to_string()).unwrap();
+        let mut bs_map = self.bs1.write().map_err(|e| e.to_string()).unwrap();
+        let mut lr_map = self.lr.write().map_err(|e| e.to_string()).unwrap();
+        for (model, val) in model_dump.updater_queue.into_iter() {
+            updater_queue_map.remove(&*model);
+            updater_queue_map.insert((&*model).to_string(), val);
+        }
+        for (model, val) in model_dump.ws1.into_iter() {
+            ws_map.remove(&*model);
+            ws_map.insert((&*model).to_string(), val);
+        }
+        for (model, val) in model_dump.bs1.into_iter() {
+            bs_map.remove(&*model);
+            bs_map.insert((&*model).to_string(), val);
+        }
+        for (model, val) in model_dump.lr.into_iter() {
+            lr_map.remove(&*model);
+            lr_map.insert((&*model).to_string(), val);
+        }
+        Ok(())
     }
 }

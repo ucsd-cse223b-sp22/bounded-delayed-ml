@@ -1,5 +1,6 @@
 use crate::err::TribResult;
-use crate::ml::MLModel;
+use crate::ml;
+use crate::ml::{MLModel, ModelDump};
 use crate::rpc::parameter_server_server::ParameterServer;
 use crate::rpc::{Clock, DoubleList, EmptyRequest, ModelPull};
 use tonic::{Request, Response, Status};
@@ -17,6 +18,7 @@ impl MLModel for MyParameterServerBin {
         &self,
         double_list: crate::ml::DoubleList,
     ) -> TribResult<crate::ml::EmptyRequest> {
+        let _ = self.replica_client.initialize(double_list.clone()).await;
         Ok(self.client.initialize(double_list).await?)
     }
 
@@ -35,14 +37,24 @@ impl MLModel for MyParameterServerBin {
     }
 
     async fn pull(&self, model_pull: crate::ml::ModelPull) -> TribResult<crate::ml::DoubleList> {
+        let _ = self.replica_client.pull(model_pull.clone()).await;
         Ok(self.client.pull(model_pull).await?)
     }
 
     async fn push(&self, double_list: crate::ml::DoubleList) -> TribResult<bool> {
+        let _ = self.replica_client.push(double_list.clone()).await;
         Ok(self.client.push(double_list).await?)
     }
 
     async fn clock(&self, at_least: u64) -> TribResult<u64> {
         Ok(self.client.clock(at_least).await?)
+    }
+
+    async fn get_model_dump(&self) -> TribResult<ModelDump> {
+        Ok(self.client.get_model_dump().await?)
+    }
+
+    async fn merge_model_dump(&self, model_dump: ModelDump) -> TribResult<()> {
+        Ok(self.client.merge_model_dump(model_dump).await?)
     }
 }
